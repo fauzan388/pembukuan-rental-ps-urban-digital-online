@@ -553,6 +553,46 @@ th, td { padding: var(--space-2); vertical-align: middle; }
   padding-right: 0;
 }
 
+
+/* ===== Modal untuk History Log ===== */
+.modal-history {
+  display:none;
+  position:fixed;
+  z-index:1000;
+  left:0;
+  top:0;
+  width:100%;
+  height:100%;
+  background:rgba(0,0,0,0.6);
+}
+.modal-history .modal-content {
+  background:#fff;
+  color:#000;
+  margin:10% auto;
+  padding:20px;
+  border-radius:8px;
+  width:80%;
+  max-width:600px;
+  box-shadow:0 5px 15px rgba(0,0,0,0.3);
+}
+.modal-history .modal-content h2 {
+  margin-top:0;
+}
+.modal-history .close {
+  float:right;
+  font-size:24px;
+  cursor:pointer;
+}
+.modal-history table {
+  width:100%;
+  border-collapse:collapse;
+}
+.modal-history table th, .modal-history table td {
+  border:1px solid #ddd;
+  padding:6px;
+  text-align:left;
+}
+
 </style>
 <style id="ui-fix-0811">
 /* === UI Polishing: consistent proportions & spacing === */
@@ -1318,6 +1358,35 @@ html { scroll-behavior: smooth; }
   };
 })();
 // === /Themed Popup Helpers ===
+
+// === History Modal Functions ===
+async function showHistory(){
+  if (!USE_ONLINE){
+    alert("Mode offline: histori hanya ada di localStorage.");
+    return;
+  }
+  const resp = await api('history');
+  if (resp && resp.history){
+    let html = "<table><tr><th>No</th><th>Timestamp</th><th>User</th><th>Entries</th></tr>";
+    resp.history.forEach((h,i) => {
+      html += "<tr>";
+      html += "<td>"+(i+1)+"</td>";
+      html += "<td>"+h.timestamp+"</td>";
+      html += "<td>"+h.user+"</td>";
+      html += "<td><pre style='white-space:pre-wrap;'>"+JSON.stringify(h.entries)+"</pre></td>";
+      html += "</tr>";
+    });
+    html += "</table>";
+    document.getElementById("historyContent").innerHTML = html;
+    document.getElementById("historyModal").style.display = "block";
+  } else {
+    alert("Gagal memuat history");
+  }
+}
+function closeHistory(){
+  document.getElementById("historyModal").style.display = "none";
+}
+
 </script>
 <script>
   // === Themed Password Prompt (matches existing modal/backdrop) ===
@@ -3492,7 +3561,7 @@ textarea:focus-visible {
 
 <script>
 // ===== Online Sync (Google Apps Script + Google Sheet with Snapshot + History) =====
-const API_URL = 'https://script.google.com/macros/s/AKfycbx4Ad8_LHw3c0akzr0MD8roEysj4UvLvDePdAH6LB4fIDfp8J6PziUU4czcjapZNNrZOA/exec';  // ganti dengan Web App URL kamu
+const API_URL = 'https://script.google.com/macros/s/AKfycbza-L_d44EAcM-ljVNrF8QTQ_RP7bWbPih5JawI7y-NhAN2upa0g5brjP__nMxX7FgV9Q/exec';  // ganti dengan Web App URL kamu
 const USE_ONLINE = !!API_URL && API_URL.indexOf('http') === 0;
 
 async function api(action, payload) {
@@ -3558,6 +3627,20 @@ if (USE_ONLINE){
   }, 15000);
 }
 </script>
+
+
+<!-- Tombol & Modal History -->
+<div style="margin:10px 0;">
+  <button onclick="showHistory()">Lihat Riwayat</button>
+</div>
+
+<div id="historyModal" class="modal-history">
+  <div class="modal-content">
+    <span class="close" onclick="closeHistory()">&times;</span>
+    <h2>History Log</h2>
+    <div id="historyContent" style="max-height:400px; overflow:auto;"></div>
+  </div>
+</div>
 
 </body>
 </html>
