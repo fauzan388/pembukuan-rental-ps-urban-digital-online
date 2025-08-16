@@ -3489,5 +3489,75 @@ textarea:focus-visible {
   }
 })();
 </script>
+
+<script>
+// ===== Online Sync (Google Apps Script + Google Sheet) =====
+const API_URL = https://script.google.com/macros/s/AKfycbx4Ad8_LHw3c0akzr0MD8roEysj4UvLvDePdAH6LB4fIDfp8J6PziUU4czcjapZNNrZOA/exec;  // e.g. https://script.google.com/macros/s/AKfycb.../exec
+const USE_ONLINE = !!API_URL && API_URL.indexOf('http') === 0;
+
+async function api(action, payload) {
+  if (!USE_ONLINE) return { ok:false, error:'offline-disabled' };
+  const isList = action === 'list';
+  const url = isList ? API_URL + '?action=list' : API_URL;
+  const opts = isList ? { method:'GET' } : {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action, entries: payload && payload.entries, entry: payload && payload.entry })
+  };
+  const res = await fetch(url, opts);
+  try { return await res.json(); } catch (e) { return { ok:false, error:'bad-json' }; }
+}
+
+let __REMOTE_DUMP__ = null;
+
+// Wrapper save dengan sync ke server
+function save(){
+  try { localStorage.setItem('urban_ps_pembukuan', JSON.stringify(state.entries)); } catch(e){}
+  if (USE_ONLINE){
+    api('setAll', { entries: state.entries }).then(function(resp){
+      if (resp && resp.ok){
+        __REMOTE_DUMP__ = JSON.stringify(state.entries);
+      }
+    }).catch(function(e){ /* ignore */ });
+  }
+}
+
+// Wrapper load dengan sync server
+function load(){
+  try { state.entries = JSON.parse(localStorage.getItem('urban_ps_pembukuan') || '[]'); } catch(e){ state.entries = []; }
+  if (USE_ONLINE){
+    api('list').then(function(resp){
+      if (resp && resp.entries && Array.isArray(resp.entries)){
+        var dump = JSON.stringify(resp.entries);
+        __REMOTE_DUMP__ = dump;
+        if (dump !== JSON.stringify(state.entries)){
+          state.entries = resp.entries;
+          try { localStorage.setItem('urban_ps_pembukuan', dump); } catch(e){}
+          if (typeof render === 'function') render();
+          if (typeof setRangeControlsEnabled === 'function') setRangeControlsEnabled(state.filter==='RENTANG');
+        }
+      }
+    }).catch(function(e){ /* ignore */ });
+  }
+}
+
+// Auto-sync setiap 15s
+if (USE_ONLINE){
+  setInterval(function(){
+    api('list').then(function(resp){
+      if (!resp || !Array.isArray(resp.entries)) return;
+      var dump = JSON.stringify(resp.entries);
+      if (dump !== __REMOTE_DUMP__){
+        __REMOTE_DUMP__ = dump;
+        state.entries = resp.entries;
+        try { localStorage.setItem('urban_ps_pembukuan', dump); } catch(e){}
+        if (typeof render === 'function') render();
+        if (typeof setRangeControlsEnabled === 'function') setRangeControlsEnabled(state.filter==='RENTANG');
+      }
+    }).catch(function(e){ /* ignore */ });
+  }, 15000);
+}
+</script>
+
 </body>
 </html>
