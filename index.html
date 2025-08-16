@@ -3491,18 +3491,18 @@ textarea:focus-visible {
 </script>
 
 <script>
-// ===== Online Sync (Google Apps Script + Google Sheet) =====
-const API_URL = https://script.google.com/macros/s/AKfycbx4Ad8_LHw3c0akzr0MD8roEysj4UvLvDePdAH6LB4fIDfp8J6PziUU4czcjapZNNrZOA/exec;  // e.g. https://script.google.com/macros/s/AKfycb.../exec
+// ===== Online Sync (Google Apps Script + Google Sheet with Snapshot + History) =====
+const API_URL = 'https://script.google.com/macros/s/AKfycbx4Ad8_LHw3c0akzr0MD8roEysj4UvLvDePdAH6LB4fIDfp8J6PziUU4czcjapZNNrZOA/exec';  // ganti dengan Web App URL kamu
 const USE_ONLINE = !!API_URL && API_URL.indexOf('http') === 0;
 
 async function api(action, payload) {
   if (!USE_ONLINE) return { ok:false, error:'offline-disabled' };
-  const isList = action === 'list';
-  const url = isList ? API_URL + '?action=list' : API_URL;
+  const isList = (action === 'list' || action === 'history');
+  const url = isList ? API_URL + '?action=' + action : API_URL;
   const opts = isList ? { method:'GET' } : {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action, entries: payload && payload.entries, entry: payload && payload.entry })
+    body: JSON.stringify(Object.assign({ action }, payload||{}))
   };
   const res = await fetch(url, opts);
   try { return await res.json(); } catch (e) { return { ok:false, error:'bad-json' }; }
@@ -3510,24 +3510,24 @@ async function api(action, payload) {
 
 let __REMOTE_DUMP__ = null;
 
-// Wrapper save dengan sync ke server
+// Save -> update snapshot + append ke history
 function save(){
   try { localStorage.setItem('urban_ps_pembukuan', JSON.stringify(state.entries)); } catch(e){}
   if (USE_ONLINE){
-    api('setAll', { entries: state.entries }).then(function(resp){
+    api('save', { entries: state.entries, user: 'Fauzan' }).then(function(resp){
       if (resp && resp.ok){
         __REMOTE_DUMP__ = JSON.stringify(state.entries);
       }
-    }).catch(function(e){ /* ignore */ });
+    }).catch(function(e){ console.error(e); });
   }
 }
 
-// Wrapper load dengan sync server
+// Load snapshot terbaru
 function load(){
   try { state.entries = JSON.parse(localStorage.getItem('urban_ps_pembukuan') || '[]'); } catch(e){ state.entries = []; }
   if (USE_ONLINE){
     api('list').then(function(resp){
-      if (resp && resp.entries && Array.isArray(resp.entries)){
+      if (resp && resp.entries){
         var dump = JSON.stringify(resp.entries);
         __REMOTE_DUMP__ = dump;
         if (dump !== JSON.stringify(state.entries)){
@@ -3537,7 +3537,7 @@ function load(){
           if (typeof setRangeControlsEnabled === 'function') setRangeControlsEnabled(state.filter==='RENTANG');
         }
       }
-    }).catch(function(e){ /* ignore */ });
+    }).catch(function(e){ console.error(e); });
   }
 }
 
