@@ -543,5 +543,12 @@
 
 <script src="app.js"></script>
     <script src="weekFilter.js"></script>
+        <script>
+      setTimeout(function(){
+        if (typeof buildMonthFilter === 'function') {
+          buildMonthFilter();
+        }
+      }, 0);
+    </script>
     </body>
 </html>
